@@ -169,7 +169,7 @@
 
     <div class="app" id="appContainer" style="display: none;">
         <div class="top-bar" id="topBar">
-            <div class="genre-badge" id="genreBadge">🎵 CHORINHO</div>
+            <div class="genre-badge" id="genreBadge">CHORINHO</div>
             <div class="top-buttons">
                 <span class="audio-status" id="audioStatus"><span class="dot"></span> Aguardando</span>
                 <div class="search-wrapper">
@@ -226,6 +226,7 @@
     <div class="fab-container" id="fabContainer">
         <div class="fab-sub" id="fabSub">
             <button class="fab-sub-btn" id="fabShare"><i class="fas fa-share-alt"></i> Compartilhar</button>
+            <button class="fab-sub-btn" id="fabVoltar"><i class="fas fa-arrow-left"></i> Voltar ao VDB</button>
         </div>
         <div class="fab-main" id="fabMain"><i class="fas fa-plus"></i></div>
     </div>
@@ -233,7 +234,8 @@
     <div class="menu-popup" id="menuPopup">
         <button class="close-menu-btn" id="closeMenuBtn"><i class="fas fa-times"></i> Fechar</button>
         <button id="fullscreenMenuBtn"><i class="fas fa-expand"></i> Tela Cheia</button>
-        <button id="reloadPlaylistBtn"><i class="fas fa-sync"></i> Recarregar Playlist</button>
+        <button id="reloadPlaylistBtn"><i class="fas fa-sync"></i> Recarregar</button>
+        <button id="voltarMenuBtn"><i class="fas fa-arrow-left"></i> Voltar ao VDB</button>
     </div>
 
     <div class="notification" id="notification">Mensagem</div>
@@ -247,13 +249,13 @@
             'use strict';
 
             // ============================================================
-            // CONFIGURAÇÃO ÚNICA DO CHORINHO
+            // CONFIGURAÇÃO DO CHORINHO
             // ============================================================
             const VERSAO = Date.now();
             const GENERO = {
                 nome: 'CHORINHO',
                 cor: '#1e90ff',
-                json: 'https://raw.githubusercontent.com/radiolojasjc-hub/chorinho/refs/heads/main/chorinho.json_=' + VERSAO,
+                json: 'https://raw.githubusercontent.com/radiolojasjc-hub/chorinho/refs/heads/main/chorinho.json?_=' + VERSAO,
                 base: 'https://raw.githubusercontent.com/radiolojasjc-hub/chorinho/refs/heads/main/',
                 emoji: '🎵'
             };
@@ -349,8 +351,12 @@
                 } catch(e) {}
             }
 
+            function voltarVDB() {
+                window.location.href = 'https://radiolojasjc-hub.github.io/play12/';
+            }
+
             // ============================================================
-            // GERAR URLs - APENAS DO CHORINHO
+            // GERAR URLs
             // ============================================================
             function gerarUrlsAlternativas(musica) {
                 const urls = new Set();
@@ -877,7 +883,7 @@
                     currentIndex = 0;
                     const primeira = currentPlaylist[0];
                     if (primeira) { updateNowPlaying(primeira); }
-                    genreBadge.innerHTML = '🎵 CHORINHO';
+                    genreBadge.innerHTML = 'CHORINHO';
 
                     setTimeout(() => {
                         splash.classList.add('hidden');
@@ -933,6 +939,9 @@
                 else { navigator.clipboard.writeText(msg + ' ' + location.href).catch(() => {}); }
                 fabMain.click();
             });
+
+            document.getElementById('fabVoltar').addEventListener('click', voltarVDB);
+            document.getElementById('voltarMenuBtn').addEventListener('click', voltarVDB);
 
             playBtn.addEventListener('click', togglePlay);
             document.getElementById('nextBtn').addEventListener('click', nextTrack);
