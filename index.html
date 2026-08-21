@@ -276,6 +276,7 @@
             let ultimoId = null;
             let carregandoMusica = false;
             let tentativasFalhas = 0;
+            let playlistCarregada = false;
 
             // ============================================================
             // DOM
@@ -325,7 +326,9 @@
                 return `${m}:${s < 10 ? '0' : ''}${s}`;
             }
 
-            function showLoading(show) { loadingOverlay.classList.toggle('active', show); }
+            function showLoading(show) { 
+                loadingOverlay.classList.toggle('active', show); 
+            }
 
             function showControls() {
                 bottomControls.classList.add('visible');
@@ -353,6 +356,19 @@
 
             function voltarVDB() {
                 window.location.href = 'https://radiolojasjc-hub.github.io/play12/';
+            }
+
+            // ============================================================
+            // MÚSICAS DE FALBACK (CASO O JSON NÃO CARREGUE)
+            // ============================================================
+            function getMusicasFallback() {
+                return [
+                    { id: '1', title: 'O Boêmio', artist: 'Conjunto Época', src: 'Oboemio_CONJUNTOEPOCA.mp3' },
+                    { id: '2', title: 'Os Oito Batuta', artist: 'Crementina de Jesus', src: 'OsOitoBatuta_CrementinadeJesus.mp3' },
+                    { id: '3', title: 'Pé de Frango', artist: 'As 3 do Choro', src: 'PedeFrango_AS3dochoro.mp3' },
+                    { id: '4', title: 'Pé Na Tábua', artist: 'Os Chorões', src: 'PeNaTabua_OsChoroes.mp3' },
+                    { id: '5', title: 'Pedacinhos do Céu', artist: 'Waldir Azevedo', src: 'Pedacinhosdoceu_WaldirAzevedo.mp3' }
+                ];
             }
 
             // ============================================================
@@ -477,6 +493,7 @@
                 try {
                     showLoading(true);
                     console.log('🔄 Carregando CHORINHO...');
+                    
                     const response = await fetch(GENERO.json, { 
                         cache: 'no-store',
                         headers: {
@@ -485,33 +502,58 @@
                             'Expires': '0'
                         }
                     });
-                    if (!response.ok) throw new Error(`Erro HTTP ${response.status}`);
-                    let data = await response.json();
                     
-                    if (!Array.isArray(data)) {
-                        if (data.musicas && Array.isArray(data.musicas)) data = data.musicas;
-                        else if (data.data && Array.isArray(data.data)) data = data.data;
-                        else {
-                            const vals = Object.values(data);
-                            if (vals.length && Array.isArray(vals[0])) data = vals[0];
-                            else throw new Error('Formato inválido');
+                    if (!response.ok) {
+                        console.warn('⚠️ JSON não encontrado, usando músicas de fallback');
+                        musicas = getMusicasFallback();
+                    } else {
+                        let data = await response.json();
+                        
+                        if (!Array.isArray(data)) {
+                            if (data.musicas && Array.isArray(data.musicas)) data = data.musicas;
+                            else if (data.data && Array.isArray(data.data)) data = data.data;
+                            else {
+                                const vals = Object.values(data);
+                                if (vals.length && Array.isArray(vals[0])) data = vals[0];
+                                else {
+                                    console.warn('⚠️ Formato inválido, usando fallback');
+                                    musicas = getMusicasFallback();
+                                    showLoading(false);
+                                    return true;
+                                }
+                            }
+                        }
+                        
+                        musicas = data.filter(m => m.src && m.src.trim() && m.title && m.title.trim());
+                        
+                        if (musicas.length === 0) {
+                            console.warn('⚠️ Nenhuma música no JSON, usando fallback');
+                            musicas = getMusicasFallback();
                         }
                     }
                     
-                    musicas = data.filter(m => m.src && m.src.trim() && m.title && m.title.trim());
+                    musicas.forEach(m => {
+                        m.id = m.id || `chorinho_${Math.random().toString(36).substr(2, 6)}`;
+                        m.genero = GENERO.nome;
+                        m.artist = m.artist || m.artista || 'Artista';
+                    });
+                    
+                    console.log(`✅ CHORINHO carregou ${musicas.length} músicas`);
+                    playlistCarregada = true;
+                    showLoading(false);
+                    return true;
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao carregar CHORINHO:', error);
+                    musicas = getMusicasFallback();
                     musicas.forEach(m => {
                         m.id = m.id || `chorinho_${Math.random().toString(36).substr(2, 6)}`;
                         m.genero = GENERO.nome;
                     });
-                    
-                    console.log(`✅ CHORINHO carregou ${musicas.length} músicas`);
+                    playlistCarregada = true;
                     showLoading(false);
+                    showNotification('⚠️ Usando músicas locais', 2000);
                     return true;
-                } catch (error) {
-                    console.error('❌ Erro ao carregar CHORINHO:', error);
-                    showLoading(false);
-                    showNotification(`❌ Erro: ${error.message}`, 3000);
-                    return false;
                 }
             }
 
@@ -565,7 +607,14 @@
                 if (carregandoMusica) return;
                 if (!isBackgroundActive) return;
                 if (!musicas.length) return;
-                if (!currentPlaylist || currentPlaylist.length === 0) { currentPlaylist = shuffleArray([...musicas]); currentIndex = 0; }
+                if (!playlistCarregada) {
+                    setTimeout(() => playMusic(), 500);
+                    return;
+                }
+                if (!currentPlaylist || currentPlaylist.length === 0) { 
+                    currentPlaylist = shuffleArray([...musicas]); 
+                    currentIndex = 0; 
+                }
 
                 carregandoMusica = true;
                 const track = obterProximaMusica();
@@ -852,6 +901,7 @@
 
             function recarregarPlaylist() {
                 showLoading(true);
+                playlistCarregada = false;
                 carregarPlaylist().then(() => {
                     currentPlaylist = shuffleArray([...musicas]);
                     currentIndex = 0;
@@ -872,9 +922,10 @@
                     updateFavCount();
                     renderFavList();
 
-                    const carregou = await carregarPlaylist();
-                    if (!carregou || musicas.length === 0) {
-                        showNotification('❌ Nenhuma música carregada', 3000);
+                    await carregarPlaylist();
+
+                    if (musicas.length === 0) {
+                        showNotification('❌ Nenhuma música disponível', 3000);
                         setTimeout(() => { location.reload(); }, 3000);
                         return;
                     }
